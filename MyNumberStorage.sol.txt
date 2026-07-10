@@ -1,0 +1,23 @@
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.34;
+
+contract MyNumberStorage {
+    uint256 public myFavoriteNumber;
+
+    constructor() payable {
+        myFavoriteNumber = 100;
+    }
+
+    function numberBadhao() public {
+        myFavoriteNumber += 1;
+    }
+
+    function numberGhatao() public {
+        require(myFavoriteNumber > 0, "Arre! Number zero se neeche nahi ja sakta!");
+        myFavoriteNumber -= 1;
+    }
+
+    function meraNumberDekho() public view returns (uint256) {
+        return myFavoriteNumber;
+    }
+}

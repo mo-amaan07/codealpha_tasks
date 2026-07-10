@@ -1,0 +1,24 @@
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.34;
+
+contract MultiSend {
+    event Sent(address indexed receiver, uint256 amount);
+
+    function sendToMany(address[] memory receivers) public payable {
+        require(receivers.length > 0, "Koi receiver nahi hai!");
+        
+        uint256 amountPerReceiver = msg.value / receivers.length;
+        require(amountPerReceiver > 0, "Har receiver ko kam se kam 1 wei chahiye!");
+
+        for (uint256 i = 0; i < receivers.length; i++) {
+            address receiver = receivers[i];
+            (bool success, ) = receiver.call{value: amountPerReceiver}("");
+            require(success, "Paise bhejne mein fail ho gaye!");
+            emit Sent(receiver, amountPerReceiver);
+        }
+    }
+
+    function getBalance() public view returns (uint256) {
+        return address(this).balance;
+    }
+}

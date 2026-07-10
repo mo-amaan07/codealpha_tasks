@@ -1,0 +1,114 @@
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.34;
+
+contract PollingSystem {
+    struct Poll {
+        string title;
+        string[] options;
+        uint256 endTime;
+        mapping(address => bool) hasVoted;
+        mapping(uint256 => uint256) voteCount;
+        bool exists;
+    }
+
+    Poll[] public polls;
+    address public owner;
+
+    event PollCreated(uint256 pollId, string title);
+    event Voted(uint256 pollId, address voter, uint256 optionIndex);
+    event PollClosed(uint256 pollId, uint256 winningOption);
+
+    constructor() {
+        owner = msg.sender;
+    }
+
+    function createPoll(
+        string memory title,
+        string[] memory options,
+        uint256 durationInMinutes
+    ) public {
+        require(msg.sender == owner, "Sirf owner poll bana sakta hai!");
+        require(options.length >= 2, "Kam se kam 2 options chahiye!");
+        require(durationInMinutes > 0, "Duration 0 se zyada honi chahiye!");
+
+        Poll storage newPoll = polls.push();
+        newPoll.title = title;
+        newPoll.options = options;
+        newPoll.endTime = block.timestamp + (durationInMinutes * 1 minutes);
+        newPoll.exists = true;
+
+        emit PollCreated(polls.length - 1, title);
+    }
+
+    function vote(uint256 pollId, uint256 optionIndex) public {
+        require(pollId < polls.length, "Poll exist nahi karta!");
+        Poll storage poll = polls[pollId];
+        require(block.timestamp < poll.endTime, "Poll khatam ho gaya! Ab vote nahi kar sakte!");
+        require(optionIndex < poll.options.length, "Invalid option!");
+        require(!poll.hasVoted[msg.sender], "Aap pehle hi vote kar chuke hain!");
+
+        poll.voteCount[optionIndex] += 1;
+        poll.hasVoted[msg.sender] = true;
+
+        emit Voted(pollId, msg.sender, optionIndex);
+    }
+
+    function getWinner(uint256 pollId) public view returns (string memory, uint256) {
+        require(pollId < polls.length, "Poll exist nahi karta!");
+        Poll storage poll = polls[pollId];
+        require(block.timestamp >= poll.endTime, "Poll abhi khatam nahi hua! Wait karo!");
+
+        uint256 winningOption = 0;
+        uint256 maxVotes = 0;
+
+        for (uint256 i = 0; i < poll.options.length; i++) {
+            if (poll.voteCount[i] > maxVotes) {
+                maxVotes = poll.voteCount[i];
+                winningOption = i;
+            }
+        }
+
+        if (maxVotes == 0) {
+            return ("Kisi ne vote nahi kiya!", 0);
+        }
+
+        return (poll.options[winningOption], poll.voteCount[winningOption]);
+    }
+
+    function getPollDetails(uint256 pollId) public view returns (
+        string memory title,
+        uint256 endTime,
+        uint256 totalOptions,
+        bool isActive
+    ) {
+        require(pollId < polls.length, "Poll exist nahi karta!");
+        Poll storage poll = polls[pollId];
+
+        return (
+            poll.title,
+            poll.endTime,
+            poll.options.length,
+            block.timestamp < poll.endTime
+        );
+    }
+
+    function getOptions(uint256 pollId) public view returns (string[] memory) {
+        require(pollId < polls.length, "Poll exist nahi karta!");
+        return polls[pollId].options;
+    }
+
+    function getVoteCount(uint256 pollId, uint256 optionIndex) public view returns (uint256) {
+        require(pollId < polls.length, "Poll exist nahi karta!");
+        require(optionIndex < polls[pollId].options.length, "Invalid option!");
+        return polls[pollId].voteCount[optionIndex];
+    }
+
+    function hasUserVoted(uint256 pollId, address user) public view returns (bool) {
+        require(pollId < polls.length, "Poll exist nahi karta!");
+        return polls[pollId].hasVoted[user];
+    }
+
+    function getTotalPolls() public view returns (uint256) {
+        return polls.length;
+    }
+}
